@@ -33,10 +33,17 @@ blueprint:
 
     active_state:
       name: Active State
-      description: The state required to run (e.g., 'Night').
+      description: The state required to run. Select from the list or type your own custom state name exactly as it appears in your helper.
       default: "Night"
       selector:
-        text:
+        select:
+          options:
+            - "Night"
+            - "Sleep"
+            - "Evening"
+            - "Day"
+            - "Away"
+          custom_value: true
 
     main_light_blocker:
       name: Blocker Light (Optional)
