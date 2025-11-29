@@ -38,11 +38,9 @@ blueprint:
       selector:
         select:
           options:
-            - "Night"
-            - "Sleep"
-            - "Evening"
             - "Day"
-            - "Away"
+            - "Evening"
+            - "Night"
           custom_value: true
 
     main_light_blocker:
