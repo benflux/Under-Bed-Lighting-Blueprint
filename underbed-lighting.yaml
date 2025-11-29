@@ -35,6 +35,8 @@ blueprint:
       name: Active State
       description: The state required to run (e.g., 'Night').
       default: "Night"
+      selector:
+        text:
 
     main_light_blocker:
       name: Blocker Light (Optional)
