@@ -1,0 +1,130 @@
+blueprint:
+  name: Bed Pressure Lighting (Master)
+  description: >
+    1. Triggers when you GET OUT of bed (Pressure sensor clears).
+    2. Checks if House Mode is 'Night'.
+    3. Checks if a Blocker Light is OFF (optional, prevents triggering if room is already bright).
+    4. Turns on under-bed lights.
+    5. Turns off when you RETURN to bed OR when the Safety Timer expires.
+  domain: automation
+  input:
+    bed_sensor:
+      name: Bed Pressure Sensor
+      description: Select the sensor for ONE side of the bed (e.g., Bed Left).
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: [occupancy, presence, motion]
+
+    target_lights:
+      name: Under Bed Lights
+      description: The strip lights to control.
+      selector:
+        target:
+          entity:
+            domain: light
+
+    mode_helper:
+      name: House Mode Helper
+      description: The Input Select helper (e.g., House Mode).
+      selector:
+        entity:
+          domain: input_select
+
+    active_state:
+      name: Active State
+      description: The state required to run (e.g., 'Night').
+      default: "Night"
+
+    main_light_blocker:
+      name: Blocker Light (Optional)
+      description: >
+        If this light is ON, the under-bed lights will NOT trigger. 
+        Leave blank if you don't want this feature.
+      default: none
+      selector:
+        entity:
+          domain: light
+
+    light_brightness:
+      name: Night Light Brightness
+      description: Brightness percentage (recommended 5-20%).
+      default: 15
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+
+    safety_timer:
+      name: Safety Timer
+      description: If you don't return to bed, lights turn off after this many minutes.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 60
+          unit_of_measurement: "min"
+          mode: slider
+
+    light_transition:
+      name: Fade Time
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 10
+          unit_of_measurement: "s"
+
+# Restart mode ensures if you get in/out rapidly, the timer resets correctly
+mode: restart
+
+trigger:
+  - platform: state
+    entity_id: !input bed_sensor
+    from: "on"
+    to: "off"
+
+variables:
+  # Load the blocker entity into a variable so we can check if it exists
+  blocker_entity: !input main_light_blocker
+
+condition:
+  # 1. Check House Mode (Must be Night)
+  - condition: state
+    entity_id: !input mode_helper
+    state: !input active_state
+  
+  # 2. Check Blocker (Only if user selected one)
+  - condition: template
+    value_template: >
+      {% if blocker_entity != none %}
+        {{ is_state(blocker_entity, 'off') }}
+      {% else %}
+        true
+      {% endif %}
+
+action:
+  # Turn ON
+  - service: light.turn_on
+    target: !input target_lights
+    data:
+      brightness_pct: !input light_brightness
+      transition: !input light_transition
+
+  # Wait for Return (Pressure Detected) OR Timeout
+  - wait_for_trigger:
+      - platform: state
+        entity_id: !input bed_sensor
+        from: "off"
+        to: "on"
+    timeout: 
+      minutes: !input safety_timer
+    continue_on_timeout: true
+
+  # Turn OFF
+  - service: light.turn_off
+    target: !input target_lights
+    data:
+      transition: !input light_transition
